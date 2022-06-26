@@ -1,4 +1,4 @@
-# Projekt4
+# Projekt4 using C++, WinApi, GDI+
 Dzwig
 
 This application is simulating work of crane. Where u can make a tower of 3 elements using the crane
