@@ -1,19 +1,13 @@
 #include <windows.h>
-#include <windowsx.h>
 #include <gdiplus.h>
-#include <vector>
-#include <string>
-#include <iostream>
 #include <ctime>
 
-using namespace std;
 using namespace Gdiplus;
-
 
 #pragma comment (lib,"Gdiplus.lib")
 #pragma warning (disable : 4244)            
 
-MSG Komunikat;
+
 int KOLUMNA_KSZTAŁT = 0;
 bool GD = false;
 bool trzyma = false;
@@ -192,7 +186,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             pole[i][j] = false;
             polozenie_K[i][j] = false;
         }
-    
+    MSG Komunikat;
     WNDCLASSEX          wc;
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR           gdiplusToken;
