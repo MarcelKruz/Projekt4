@@ -1,0 +1,539 @@
+#include <windows.h>
+#include <windowsx.h>
+#include <gdiplus.h>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <ctime>
+
+using namespace std;
+using namespace Gdiplus;
+
+
+#pragma comment (lib,"Gdiplus.lib")
+#pragma warning (disable : 4244)            
+
+MSG Komunikat;
+int KOLUMNA_KSZTAŁT = 0;
+bool GD = false;
+bool trzyma = false;
+int KOLUMNA_DZWIG = 0;
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+
+enum KONTROLKI
+{
+    PRZYCISK_TROJKAT = 500,
+    PRZYCISK_KWADRAT,
+    PRZYCISK_KOLO,
+
+    PRZYCISK_PRAWO,
+    PRZYCISK_GORA,
+    PRZYCISK_LEWO,
+    PRZYCISK_DOL,
+
+    PRZYCISK_P,
+    PRZYCISK_L,
+    PRZYCISK_DODAJ,
+
+    PRZYCISK_ZLAP,
+    PRZYCISK_UPUSC
+};
+
+enum KSZTAŁTY
+{
+    TROJKAT=0,
+    KOLO,
+    KWADRAT
+};
+KSZTAŁTY ksztalt = TROJKAT;
+
+bool pole[10][3];
+bool polozenie_K[10][3];
+
+void Rysuj(HDC hdc);
+
+void RysujElement(HDC hdc, int wysokosc)
+{
+    Graphics gh(hdc);
+    SolidBrush Brush(Color(255, 255, 0, 0));
+    if (ksztalt == TROJKAT)
+    {
+        PointF point1(245.0f + 40 * KOLUMNA_KSZTAŁT, 300.0f-40*wysokosc);
+        PointF point2(225.0f + 40 * KOLUMNA_KSZTAŁT, 340.0f-40*wysokosc);
+        PointF point3(265.0f + 40 * KOLUMNA_KSZTAŁT, 340.0f-40*wysokosc);
+        PointF points[3] = { point1, point2, point3 };
+        PointF* pPoints = points;
+        gh.FillPolygon(&Brush, pPoints, 3);
+    }
+    if (ksztalt == KOLO)
+    {
+        gh.FillEllipse(&Brush, 225 + 40 * KOLUMNA_KSZTAŁT, 300 - 40 * wysokosc, 40, 40);
+    }
+    if (ksztalt == KWADRAT)
+    {
+        gh.FillRectangle(&Brush, 225 + 40 * KOLUMNA_KSZTAŁT, 300 - 40 * wysokosc, 40, 40);
+        polozenie_K[KOLUMNA_KSZTAŁT][wysokosc] = true;
+    }
+}
+
+int sprawdzmiejsce()
+{
+    int wysokosc=0;
+    while (pole[KOLUMNA_KSZTAŁT][wysokosc])
+    {
+        wysokosc++;
+        if (wysokosc == 3)break;
+    }
+    return wysokosc;
+}
+
+void AnimojGora(int& przesow, int wysokosc,int kwadrat, HDC hdc)
+{
+    Graphics gh(hdc);
+    Pen penB(Color(255, 0, 0, 0));
+    Pen penW(Color(255, 255, 255, 255));
+    SolidBrush brushG(Color(255, 220, 220, 220));
+    SolidBrush brushW(Color(255, 255, 255, 255));
+    SolidBrush brushR(Color(255, 255, 0, 0));
+    
+    float start = clock();
+    while ((clock() - start) / CLOCKS_PER_SEC < 0.025)continue;
+
+    gh.DrawLine(&penW, 245+40*KOLUMNA_DZWIG, 150, 245+40*KOLUMNA_DZWIG, 330 - 40 * wysokosc + przesow);
+    gh.FillRectangle(&brushW, 225 + 40 * KOLUMNA_DZWIG, 330 - 40 * wysokosc + przesow - kwadrat, 40, 10);
+    if (trzyma) gh.FillRectangle(&brushW, 225 + 40 * KOLUMNA_DZWIG, 300 - 40 * wysokosc + przesow, 40, 40);
+    
+    przesow -= 2;
+
+    gh.DrawLine(&penB, 245 + 40 * KOLUMNA_DZWIG, 150, 245 + 40 * KOLUMNA_DZWIG, 330 - 40 * wysokosc + przesow - kwadrat);
+    gh.FillRectangle(&brushG, 225 + 40 * KOLUMNA_DZWIG, 330 - 40 * wysokosc + przesow - kwadrat, 40, 10);
+    if (trzyma) gh.FillRectangle(&brushR, 225 + 40 * KOLUMNA_DZWIG, 300 - 40 * wysokosc + przesow, 40, 40);
+
+
+}
+
+void AnimojDol(int &przesow, HDC hdc)
+{
+    Graphics gh(hdc);
+    Pen penB(Color(255, 0, 0, 0));
+    Pen penW(Color(255, 255, 255, 255));
+    SolidBrush brushG(Color(255, 220, 220, 220));
+    SolidBrush brushW(Color(255, 255, 255, 255));
+    SolidBrush brushR(Color(255, 255, 0, 0));
+
+    float start = clock();
+    while ((clock() - start) / CLOCKS_PER_SEC < 0.025)continue;
+
+    gh.FillRectangle(&brushW, 225+40*KOLUMNA_DZWIG, 150+przesow, 40, 10);
+    if (trzyma) gh.FillRectangle(&brushW, 225 + 40 * KOLUMNA_DZWIG, 160 + przesow, 40, 40);
+    
+    przesow+=2;
+
+    gh.DrawLine(&penB, 245 + 40 * KOLUMNA_DZWIG, 150, 245 + 40 * KOLUMNA_DZWIG, 150+przesow);
+    gh.FillRectangle(&brushG, 225 + 40 * KOLUMNA_DZWIG, 150+przesow, 40, 10);
+    if (trzyma) gh.FillRectangle(&brushR, 225 + 40 * KOLUMNA_DZWIG, 160 + przesow, 40, 40);
+
+}
+
+void AnimojPoziom(int strona, int &przesow, HDC hdc)
+{
+    Graphics gh(hdc);
+    Pen penB(Color(255, 0, 0, 0));
+    Pen penW(Color(255, 255, 255, 255));
+    SolidBrush brushG(Color(255, 220, 220, 220));
+    SolidBrush brushW(Color(255, 255, 255, 255));
+    SolidBrush brushR(Color(255, 255, 0, 0));
+    
+    float start = clock();
+    while ((clock() - start) / CLOCKS_PER_SEC < 0.025)continue;
+        
+    
+    gh.DrawLine(&penW, 245+40*KOLUMNA_DZWIG+przesow, 71, 245 + 40 * KOLUMNA_DZWIG + przesow, 150);
+    gh.FillRectangle(&brushW, 225 + 40 * KOLUMNA_DZWIG + przesow, 150, 40, 10);
+    if(trzyma)gh.FillRectangle(&brushW, 225 + 40 * KOLUMNA_DZWIG + przesow, 160, 40, 40);
+    
+    przesow += 2*strona;
+    
+    gh.DrawLine(&penB, 245 + 40 * KOLUMNA_DZWIG + przesow, 71, 245 + 40 * KOLUMNA_DZWIG + przesow, 150);
+    gh.FillRectangle(&brushG, 225 + 40 * KOLUMNA_DZWIG + przesow, 150, 40, 10);
+    if (trzyma)gh.FillRectangle(&brushR, 225 + 40 * KOLUMNA_DZWIG + przesow, 160, 40, 40);
+
+}
+
+void RysujWskaznik(HDC hdc, int strona)
+{
+    Graphics gh(hdc);
+    SolidBrush brushB(Color(255, 0, 0, 0));
+    SolidBrush brushW(Color(255, 255, 2555, 255));
+    PointF pointw1(245.0f + 40 * (KOLUMNA_KSZTAŁT + strona), 340.0f);
+    PointF pointw2(255.0f + 40 * (KOLUMNA_KSZTAŁT + strona), 350.0f);
+    PointF pointw3(235.0f + 40 * (KOLUMNA_KSZTAŁT + strona), 350.0f);
+    PointF pointsw[3] = { pointw1, pointw2, pointw3 };
+    PointF* pPointsw = pointsw;
+
+    gh.FillPolygon(&brushW, pPointsw, 3);
+
+    PointF point1(245.0f + 40 * KOLUMNA_KSZTAŁT, 340.0f);
+    PointF point2(255.0f + 40 * KOLUMNA_KSZTAŁT, 350.0f);
+    PointF point3(235.0f + 40 * KOLUMNA_KSZTAŁT, 350.0f);
+    PointF points[3] = { point1, point2, point3 };
+    PointF* pPoints = points;
+
+    gh.FillPolygon(&brushB, pPoints, 3);
+}
+
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    for (int i = 0; i < 10; i++)
+        for (int j = 0; j < 3; j++) 
+        {
+            pole[i][j] = false;
+            polozenie_K[i][j] = false;
+        }
+    
+    WNDCLASSEX          wc;
+    GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR           gdiplusToken;
+    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+
+    wc.cbSize = sizeof(WNDCLASSEX);
+    wc.style = 0;
+    wc.lpfnWndProc = WndProc;
+    wc.cbClsExtra = 0;
+    wc.cbWndExtra = 0;
+    wc.hInstance = hInstance;
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszMenuName = L"Program";
+    wc.lpszClassName = wc.lpszMenuName;
+    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+
+    RegisterClassEx(&wc);
+
+    HWND hwnd = CreateWindowEx(WS_EX_CLIENTEDGE, wc.lpszMenuName, wc.lpszMenuName, WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 920, 600, NULL, NULL, hInstance, NULL);
+
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Wybor miejsca kształtu", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+        10, 400, 260, 100, hwnd, NULL, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"<--", WS_CHILD | WS_VISIBLE,
+        10 + 10, 400 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_L, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"-->", WS_CHILD | WS_VISIBLE,
+        10 + 130, 400 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_P, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Dodaj", WS_CHILD | WS_VISIBLE,
+        10 + 70, 400 + 65, 100, 30, hwnd, (HMENU)PRZYCISK_DODAJ, hInstance, NULL);
+
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Wybor Kształtu", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+        280, 450, 360, 60, hwnd, NULL, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Trojkat", WS_CHILD | WS_VISIBLE,
+        280 + 10, 450 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_TROJKAT, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Kolo", WS_CHILD | WS_VISIBLE,
+        280 + 130, 450 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_KOLO, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Kwadrat", WS_CHILD | WS_VISIBLE,
+        280 + 250, 450 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_KWADRAT, hInstance, NULL);
+
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Interakcje dzwigu", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+        280, 380, 260, 60, hwnd, NULL, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Zlap", WS_CHILD | WS_VISIBLE,
+        280 + 10, 380 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_ZLAP, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Upusc", WS_CHILD | WS_VISIBLE,
+        280 + 130, 380 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_UPUSC, hInstance, NULL);
+   
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Operacje dzwigu", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+        650, 400, 220, 120, hwnd, NULL, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Gora", WS_CHILD | WS_VISIBLE,
+        650 + 60, 400 + 25, 100, 30, hwnd, (HMENU)PRZYCISK_GORA, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Lewo", WS_CHILD | WS_VISIBLE,
+        650 + 10, 400 + 55, 100, 30, hwnd, (HMENU)PRZYCISK_LEWO, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Prawo", WS_CHILD | WS_VISIBLE,
+        650 + 110, 400 + 55, 100, 30, hwnd, (HMENU)PRZYCISK_PRAWO, hInstance, NULL);
+    CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Dol", WS_CHILD | WS_VISIBLE,
+        650 + 60, 400 + 85, 100, 30, hwnd, (HMENU)PRZYCISK_DOL, hInstance, NULL);
+   
+
+    ShowWindow(hwnd, nCmdShow);
+    UpdateWindow(hwnd);
+
+
+    while (GetMessage(&Komunikat, NULL, 0, 0))
+    {
+        TranslateMessage(&Komunikat);
+        DispatchMessage(&Komunikat);
+    }
+
+    GdiplusShutdown(gdiplusToken);
+    return Komunikat.wParam;
+}
+
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    HDC          hdc;
+    PAINTSTRUCT  ps;
+
+    switch (msg)
+    {
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+
+    case WM_PAINT:
+        hdc = BeginPaint(hwnd, &ps);
+        Rysuj(hdc);
+        EndPaint(hwnd, &ps);
+        return 0;
+
+    case WM_COMMAND:
+        switch (wParam)
+        {
+        case PRZYCISK_TROJKAT:
+            ksztalt = TROJKAT;
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_KWADRAT:
+         
+            ksztalt = KWADRAT;
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_KOLO:
+           
+            ksztalt = KOLO;
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_GORA:
+            if (GD)
+            {
+                int wysokosc = 0;
+                int przesow = 0;
+                int kwadrat = 0;
+                if (trzyma) kwadrat = 40;
+
+                while (pole[KOLUMNA_DZWIG][wysokosc])
+                {
+                    wysokosc++;
+                    if (wysokosc == 3)break;
+                }
+
+                while (przesow != -(180 - 40 * wysokosc - kwadrat))
+                {
+                    InvalidateRect(hwnd, NULL, FALSE);
+                    hdc = BeginPaint(hwnd, &ps);
+                    AnimojGora(przesow,wysokosc,kwadrat, hdc);
+                    EndPaint(hwnd, &ps);
+
+                }
+                GD = false;
+            }
+           
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_PRAWO:
+            if (KOLUMNA_DZWIG != 9 && !GD)
+            {
+                int strona = 1, przesow = 0;
+
+                while (przesow != 40)
+                {
+                    InvalidateRect(hwnd, NULL, FALSE);
+                    hdc = BeginPaint(hwnd, &ps);
+                    AnimojPoziom(strona, przesow, hdc);
+                    EndPaint(hwnd, &ps);
+                }
+                
+                KOLUMNA_DZWIG++;
+            }
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_LEWO:
+            if (KOLUMNA_DZWIG != 0 && !GD)
+            {
+                int strona = -1, przesow = 0;
+                
+                while (przesow != -40)
+                {
+                    InvalidateRect(hwnd, NULL, FALSE);
+                    hdc = BeginPaint(hwnd, &ps);
+                    AnimojPoziom(strona, przesow, hdc);
+                    EndPaint(hwnd, &ps);
+                }
+
+                KOLUMNA_DZWIG--;
+            }
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_DOL:
+            if(!GD)
+            {
+                int wysokosc = 0;
+                int przesow = 0;
+                int kwadrat = 0;
+                if (trzyma) kwadrat = 40;
+
+                while (pole[KOLUMNA_DZWIG][wysokosc])
+                {
+                    wysokosc++;
+                    if (wysokosc == 3)break;
+                }
+                if (!(trzyma && wysokosc == 3))
+                {
+                    while (przesow != (180 - 40 * wysokosc - kwadrat))
+                    {
+                        InvalidateRect(hwnd, NULL, FALSE);
+                        hdc = BeginPaint(hwnd, &ps);
+                        AnimojDol(przesow, hdc);
+                        EndPaint(hwnd, &ps);
+
+                    }
+                    GD = true;
+                }
+            }
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_L:
+            if (KOLUMNA_KSZTAŁT != 0) 
+            {
+                KOLUMNA_KSZTAŁT--;
+                int strona = 1;
+                InvalidateRect(hwnd, NULL, FALSE);
+                hdc = BeginPaint(hwnd, &ps);
+                RysujWskaznik(hdc, strona);
+                EndPaint(hwnd, &ps);
+
+            }
+            UpdateWindow(hwnd);
+            break;
+        case PRZYCISK_P:
+            if (KOLUMNA_KSZTAŁT != 9)
+            {
+                KOLUMNA_KSZTAŁT++;
+                int strona = -1;
+                InvalidateRect(hwnd, NULL, FALSE);
+                hdc = BeginPaint(hwnd, &ps);
+                RysujWskaznik(hdc, strona);
+                EndPaint(hwnd, &ps);
+            }
+            UpdateWindow(hwnd);
+            break;
+
+        case PRZYCISK_DODAJ:
+        {
+            int wysokosc = sprawdzmiejsce();
+            if (wysokosc < 3 && !(GD && KOLUMNA_KSZTAŁT == KOLUMNA_DZWIG))
+            {
+                pole[KOLUMNA_KSZTAŁT][wysokosc] = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+                hdc = BeginPaint(hwnd, &ps);
+                RysujElement(hdc, wysokosc);
+                EndPaint(hwnd, &ps);
+            }
+            UpdateWindow(hwnd);
+            break;
+        }
+        case PRZYCISK_ZLAP:
+        {
+            int wysokosc = 0;
+            while (pole[KOLUMNA_DZWIG][wysokosc])
+            {
+                wysokosc++;
+                if (wysokosc == 3) {
+                    wysokosc--;
+                    break;
+                }
+            }
+
+            if (GD && polozenie_K[KOLUMNA_DZWIG][wysokosc - 1])
+            {
+                trzyma = true;
+                polozenie_K[KOLUMNA_DZWIG][wysokosc - 1] = false;
+                pole[KOLUMNA_DZWIG][wysokosc - 1] = false;
+
+            }
+        }
+            UpdateWindow(hwnd);
+            break;
+        case PRZYCISK_UPUSC:
+            if (GD)
+            {
+                int wysokosc = 0;
+                while (pole[KOLUMNA_DZWIG][wysokosc])
+                {
+                    wysokosc++;
+                    if (wysokosc == 3) {
+                        wysokosc--;
+                        break;
+                    }
+                }
+
+                trzyma = false;
+                pole[KOLUMNA_DZWIG][wysokosc] = true;
+                polozenie_K[KOLUMNA_DZWIG][wysokosc] = true;
+            }
+
+            UpdateWindow(hwnd);
+            break;
+        }
+
+        break;
+
+    case WM_SIZE:
+        InvalidateRect(hwnd, NULL, FALSE);
+        UpdateWindow(hwnd);
+        break;
+
+    default:
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+
+    return 0;
+}
+
+void Rysuj(HDC hdc)
+{
+    Graphics gf(hdc);
+    Pen penO(Color(255, 255, 140, 0));
+    Pen penB(Color(255, 0, 0, 0));
+    SolidBrush brushG(Color(255, 220, 220, 220));
+    SolidBrush brushB(Color(255, 0, 0, 0));
+
+    gf.DrawLine(&penO, 100, 50, 600, 50);
+    gf.DrawLine(&penO, 100, 70, 630, 70);
+    gf.DrawLine(&penO, 600, 50, 630, 70);
+    gf.FillRectangle(&brushG, 50, 40, 50, 40);
+    
+    
+    gf.DrawLine(&penB, 245, 70, 245 , 150);
+    gf.FillRectangle(&brushG, 225, 150, 40, 10);
+    
+    gf.DrawLine(&penO, 175, 30, 175, 300);
+    gf.DrawLine(&penO, 200, 10, 200, 300);
+    gf.DrawLine(&penO, 175, 30, 200, 10);
+    gf.FillRectangle(&brushB, 150, 300, 75, 40);
+    
+    gf.DrawLine(&penB, 200, 10, 100, 50);
+    gf.DrawLine(&penB, 200, 10, 320, 50);
+    gf.DrawLine(&penB, 200, 10, 465, 50);
+    
+    gf.DrawLine(&penB, 0, 340, 900, 340);
+
+    PointF point1(245.0f + 40 * KOLUMNA_KSZTAŁT, 340.0f);
+    PointF point2(255.0f + 40 * KOLUMNA_KSZTAŁT, 350.0f);
+    PointF point3(235.0f + 40 * KOLUMNA_KSZTAŁT, 350.0f);
+    PointF points[3] = { point1, point2, point3 };
+    PointF* pPoints = points;
+
+    gf.FillPolygon(&brushB, pPoints, 3);
+}
